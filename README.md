@@ -1,7 +1,7 @@
 REST-STCK
 =========
 
-STCK as a Service (SaaS/ACaaS) Much REST! Such HATEOAS!
+Arbitrary Computation as a Service (ACaaS)
 
 What is this?
 -------------
@@ -9,7 +9,7 @@ What is this?
 Imagine a wonderful world where turing-complete computation could be preformed through elegant REST APIs.
 No longer just a fantasie, REST-STCK introduces REST-based computing to the masses.
 
-Based on the award-winning, enterprise-grade programming language [STCK](https://github.com/teodoran/stck), frontend developers can now leverage the power of arbitrary computation as a service (ACaaS).
+Based on the award-winning, enterprise-grade programming language [STCK](https://github.com/teodoran/stck), frontend developers can now leverage the power of Arbitrary Computation as a Service (ACaaS).
 
 Getting started
 ---------------
