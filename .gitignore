@@ -1,2 +1,6 @@
+# .Net Core compiled code
 bin/
 obj/
+
+# VS Code settings
+.vscode/
