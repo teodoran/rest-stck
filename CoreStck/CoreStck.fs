@@ -8,12 +8,12 @@ module Interpreter =
 
     let standardLibrary = [
         ("2dup", ["over"; "over"]);
-        ("rem", ["dup"; "rot"; "swap"; "2dup"; "i/"; "*"; "-"; "1000000"; "*"; "swap"; "i/"]);
-        ("/", ["2dup"; "i/"; "rot"; "rot"; "rem"]);
-        ("empty", ["len"; "0"; "="]);
-        ("clear", ["empty"; "?"; ":"; "."; "clear"; ";"]);
-        ("max", ["len"; "1"; "="; "not"; "?"; "2dup"; ">"; "?"; "swap"; "."; ":"; "."; ";"; "max"; ":"; ";"]);
-        ("min", ["len"; "1"; "="; "not"; "?"; "2dup"; "<"; "?"; "swap"; "."; ":"; "."; ";"; "min"; ":"; ";"])
+        ("rem", ["dup"; "rot"; "swap"; "2dup"; "divi"; "mult"; "sub"; "1000000"; "mult"; "swap"; "divi"]);
+        ("div", ["2dup"; "divi"; "rot"; "rot"; "rem"]);
+        ("empty", ["len"; "0"; "eq"]);
+        ("clear", ["empty"; "if"; "else"; "drop"; "clear"; "end"]);
+        ("max", ["len"; "1"; "eq"; "not"; "if"; "2dup"; "gt"; "if"; "swap"; "drop"; "else"; "drop"; "end"; "max"; "else"; "end"]);
+        ("min", ["len"; "1"; "eq"; "not"; "if"; "2dup"; "lt"; "if"; "swap"; "drop"; "else"; "drop"; "end"; "min"; "else"; "end"])
     ]
 
     let mutable error = null
@@ -101,20 +101,20 @@ module Interpreter =
 
     let exec exp stack =
         match exp with
-        | "." -> drop stack
+        | "drop" -> drop stack
         | "swap" -> swap stack
         | "dup" -> dup stack
         | "over" -> over stack
         | "rot" -> rot stack
         | "len" -> len stack
-        | "+" -> add stack
-        | "-" -> substract stack
-        | "*" -> multiply stack
-        | "i/" -> divide stack
-        | "%" -> modulo stack
-        | "=" -> equal stack
-        | ">" -> greater stack
-        | "<" -> less stack
+        | "add" -> add stack
+        | "sub" -> substract stack
+        | "mult" -> multiply stack
+        | "divi" -> divide stack
+        | "mod" -> modulo stack
+        | "eq" -> equal stack
+        | "gt" -> greater stack
+        | "lt" -> less stack
         | "not" -> not stack
         | _ ->
             if isInt exp then
@@ -136,14 +136,14 @@ module Interpreter =
                 find s tail
 
     let tokens (s:string) =
-        s.Split([|' '|]) |> Array.toList
+        s.Split([|'_'|]) |> Array.toList
 
     let rec split delim n col exps =
         match exps with
         | [] -> (col |> List.rev, [])
         | head :: tail ->
             match head with
-            | "?" -> split delim (n + 1) (head :: col) tail
+            | "if" -> split delim (n + 1) (head :: col) tail
             | d when d = delim ->
                 match n with
                 | 0 -> (col |> List.rev, tail)
@@ -151,8 +151,8 @@ module Interpreter =
             | _ -> split delim n (head :: col) tail
                 
     let cond tos exps =
-        let t = split ":" 0 [] exps
-        let f = split ";" 0 [] (snd t)
+        let t = split "else" 0 [] exps
+        let f = split "end" 0 [] (snd t)
 
         match tos <> 0 with
         | true -> (fst t) @ (snd f)
@@ -166,12 +166,12 @@ module Interpreter =
         | [] -> (heap, stack)
         | head :: tail ->
             match head with
-            | "//" -> (heap, stack)
-            | "#" ->
+            | "ignore" -> (heap, stack)
+            | "def" ->
                 match tail with
                 | [] -> (heap, stack)
                 | name :: definition -> (define (name, definition) heap, stack)
-            | "?" ->
+            | "if" ->
                 match stack with
                 | [] -> (heap, stack)
                 | tos :: rest -> eval (cond tos tail) (heap, rest)
