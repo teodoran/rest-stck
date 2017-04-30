@@ -16,7 +16,7 @@ namespace RestStck.Models
 
         public string Hash()
         {
-            var hash = MD5.Create().ComputeHash(Encoding.UTF8.GetBytes(Heap.ToString() + Stack.ToString() + Expression.ToString()));
+            var hash = MD5.Create().ComputeHash(Encoding.UTF8.GetBytes(Heap.ToString() + Stack.ToString() + String.Join("", Expression)));
             Key = BitConverter.ToString(hash).Replace("-", "");
             return Key;
         }
