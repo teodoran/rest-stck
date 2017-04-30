@@ -7,13 +7,34 @@ open System.Text.RegularExpressions
 module Interpreter =
 
     let standardLibrary = [
+        ("add", ["+"]);
+        ("sub", ["-"]);
+        ("mult", ["*"]);
+        ("gt", [">"]);
+        ("lt", ["<"]);
+        ("idiv", ["i/"]);
+        ("if", ["?"]);
+        ("else", [":"]);
+        ("drop", ["."]);
+        ("end", [";"]);
+        ("mod", ["%"]);
+        ("zero", ["0"]);
+        ("defn", ["#"]);
+        ("swap", ["swap"]);
+        ("dup", ["dup"]);
+        ("over", ["over"]);
+        ("rot", ["rot"]);
+        ("len", ["len"]);
+        ("eq", ["="]);
+        ("not", ["not"]);
+        ("onemore", ["1"; "+"]);
         ("2dup", ["over"; "over"]);
-        ("rem", ["dup"; "rot"; "swap"; "2dup"; "divi"; "mult"; "sub"; "1000000"; "mult"; "swap"; "divi"]);
-        ("div", ["2dup"; "divi"; "rot"; "rot"; "rem"]);
-        ("empty", ["len"; "0"; "eq"]);
-        ("clear", ["empty"; "if"; "else"; "drop"; "clear"; "end"]);
-        ("max", ["len"; "1"; "eq"; "not"; "if"; "2dup"; "gt"; "if"; "swap"; "drop"; "else"; "drop"; "end"; "max"; "else"; "end"]);
-        ("min", ["len"; "1"; "eq"; "not"; "if"; "2dup"; "lt"; "if"; "swap"; "drop"; "else"; "drop"; "end"; "min"; "else"; "end"])
+        ("rem", ["dup"; "rot"; "swap"; "2dup"; "i/"; "*"; "-"; "1000000"; "*"; "swap"; "i/"]);
+        ("div", ["2dup"; "i/"; "rot"; "rot"; "rem"]);
+        ("empty", ["len"; "0"; "="]);
+        ("clear", ["empty"; "?"; ":"; "."; "clear"; ";"]);
+        ("max", ["len"; "1"; "="; "not"; "?"; "2dup"; ">"; "?"; "swap"; "."; ":"; "."; ";"; "max"; ":"; ";"]);
+        ("min", ["len"; "1"; "="; "not"; "?"; "2dup"; "<"; "?"; "swap"; "."; ":"; "."; ";"; "min"; ":"; ";"])
     ]
 
     let mutable error = null
@@ -101,20 +122,20 @@ module Interpreter =
 
     let exec exp stack =
         match exp with
-        | "drop" -> drop stack
+        | "." -> drop stack
         | "swap" -> swap stack
         | "dup" -> dup stack
         | "over" -> over stack
         | "rot" -> rot stack
         | "len" -> len stack
-        | "add" -> add stack
-        | "sub" -> substract stack
-        | "mult" -> multiply stack
-        | "divi" -> divide stack
-        | "mod" -> modulo stack
-        | "eq" -> equal stack
-        | "gt" -> greater stack
-        | "lt" -> less stack
+        | "+" -> add stack
+        | "-" -> substract stack
+        | "*" -> multiply stack
+        | "i/" -> divide stack
+        | "%" -> modulo stack
+        | "=" -> equal stack
+        | ">" -> greater stack
+        | "<" -> less stack
         | "not" -> not stack
         | _ ->
             if isInt exp then
@@ -136,14 +157,14 @@ module Interpreter =
                 find s tail
 
     let tokens (s:string) =
-        s.Split([|'_'|]) |> Array.toList
+        s.Split([|' '|]) |> Array.toList
 
     let rec split delim n col exps =
         match exps with
         | [] -> (col |> List.rev, [])
         | head :: tail ->
             match head with
-            | "if" -> split delim (n + 1) (head :: col) tail
+            | "?" -> split delim (n + 1) (head :: col) tail
             | d when d = delim ->
                 match n with
                 | 0 -> (col |> List.rev, tail)
@@ -151,8 +172,8 @@ module Interpreter =
             | _ -> split delim n (head :: col) tail
                 
     let cond tos exps =
-        let t = split "else" 0 [] exps
-        let f = split "end" 0 [] (snd t)
+        let t = split ":" 0 [] exps
+        let f = split ";" 0 [] (snd t)
 
         match tos <> 0 with
         | true -> (fst t) @ (snd f)
@@ -166,12 +187,12 @@ module Interpreter =
         | [] -> (heap, stack)
         | head :: tail ->
             match head with
-            | "ignore" -> (heap, stack)
-            | "def" ->
+            | "//" -> (heap, stack)
+            | "#" ->
                 match tail with
                 | [] -> (heap, stack)
                 | name :: definition -> (define (name, definition) heap, stack)
-            | "if" ->
+            | "?" ->
                 match stack with
                 | [] -> (heap, stack)
                 | tos :: rest -> eval (cond tos tail) (heap, rest)

@@ -1,9 +1,14 @@
+using System;
+using System.Collections.Generic;
+using Microsoft.FSharp.Collections;
+
 namespace RestStck.Models
 {
     public class EvaluationResult
     {
-        public string Expression { get; set; }
+        public FSharpList<Int32> Stack { get; set; }
+        public List<string> Expression { get; set; }
         public string Error { get; set; }
-        public EvaluationContext Context { get; set; }
+        public Dictionary<string, HalLink> _links { get; set; }
     }
 }
