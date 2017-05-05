@@ -20,21 +20,21 @@ module Interpreter =
         ("mod", ["%"]);
         ("zero", ["0"]);
         ("defn", ["#"]);
-        ("swap", ["swap"]);
-        ("dup", ["dup"]);
-        ("over", ["over"]);
-        ("rot", ["rot"]);
-        ("len", ["len"]);
+        ("bwap", ["swap"]);
+        ("meep", ["dup"]);
+        ("jump", ["over"]);
+        ("mop", ["rot"]);
+        ("howlong", ["len"]);
         ("eq", ["="]);
-        ("not", ["not"]);
+        ("opposite", ["not"]);
         ("onemore", ["1"; "+"]);
-        ("2dup", ["over"; "over"]);
-        ("rem", ["dup"; "rot"; "swap"; "2dup"; "i/"; "*"; "-"; "1000000"; "*"; "swap"; "i/"]);
-        ("div", ["2dup"; "i/"; "rot"; "rot"; "rem"]);
+        ("2meep", ["over"; "over"]);
+        ("rem", ["dup"; "rot"; "swap"; "2meep"; "i/"; "*"; "-"; "1000000"; "*"; "swap"; "i/"]);
+        ("div", ["2meep"; "i/"; "rot"; "rot"; "rem"]);
         ("empty", ["len"; "0"; "="]);
         ("clear", ["empty"; "?"; ":"; "."; "clear"; ";"]);
-        ("max", ["len"; "1"; "="; "not"; "?"; "2dup"; ">"; "?"; "swap"; "."; ":"; "."; ";"; "max"; ":"; ";"]);
-        ("min", ["len"; "1"; "="; "not"; "?"; "2dup"; "<"; "?"; "swap"; "."; ":"; "."; ";"; "min"; ":"; ";"])
+        ("max", ["len"; "1"; "="; "not"; "?"; "2meep"; ">"; "?"; "swap"; "."; ":"; "."; ";"; "max"; ":"; ";"]);
+        ("min", ["len"; "1"; "="; "not"; "?"; "2meep"; "<"; "?"; "swap"; "."; ":"; "."; ";"; "min"; ":"; ";"])
     ]
 
     let mutable error = null
@@ -180,8 +180,7 @@ module Interpreter =
         | false -> (fst f) @ (snd f)
 
     let rec eval exps hs =
-        let heap = fst hs
-        let stack = snd hs
+        let heap, stack = hs
 
         match exps with
         | [] -> (heap, stack)
@@ -201,8 +200,14 @@ module Interpreter =
                 | [] -> eval tail (heap, exec head stack)
                 | def -> eval (def @ tail) hs
     
-    let evaluate hs line =
-        let exps = tokens line
+    let evaluate hse exp =
+        let heap, stack, exps = hse
+        match exp with
+        | null -> hse
+        | "" -> hse
+        | "eval" ->
+            let h, s = eval (List.rev exps) (heap, stack)
+            (h, s, [])
+        | _ -> (heap, stack, (push exp exps))
 
-        hs
-        |> eval exps
+    let initialContext : (string * string list) list * int list * string list = (standardLibrary, [], [])

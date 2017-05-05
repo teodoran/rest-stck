@@ -1,6 +1,9 @@
 using System;
+using System.Text;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 using Microsoft.FSharp.Collections;
 using RestStck.Models;
 using CoreStck;
@@ -10,96 +13,91 @@ namespace RestStck.Controllers
     [Route("/")]
     public class StckController : Controller
     {
-        private static readonly Dictionary<string, EvaluationContext> contexts = new Dictionary<string, EvaluationContext>();
+        private static readonly Dictionary<string,Tuple<FSharpList<Tuple<string,FSharpList<String>>>,FSharpList<Int32>,FSharpList<string>>> contexts = new Dictionary<string,Tuple<FSharpList<Tuple<string,FSharpList<String>>>,FSharpList<Int32>,FSharpList<string>>>();
         
         // GET /stck
         [HttpGet("/stck")]
         public JsonResult Get()
         {
-            var context = new EvaluationContext(){
-                Heap = Interpreter.standardLibrary,
-                Stack = FSharpList<int>.Empty
-            };
-            
-            var contextKey = context.Hash();
-            if(!contexts.ContainsKey(contextKey)){
-                contexts.Add(contextKey, context);
-            }
-
-            var result = new EvaluationResult(){
-                Stack = context.Stack,
-                Expression = context.Expression,
-                Error = null,
-                _links = HeapTokenLinks(context.Heap, contextKey, HttpContext.Request.Host.ToUriComponent())
-            };
-
-            var response = Json(result);
-            response.ContentType = "application/hal+json";
-
-            return response;
+            var result = EvaluateToken(null, Interpreter.initialContext);
+            return HalResponse(result);
         }
 
         // GET /stck/contexts/AA33D25C475DA8870F21773B7BE287AB/tokens/zero
         [HttpGet("/stck/contexts/{contextKey}/tokens/{token}")]
-        public JsonResult Get(string token, string contextKey)
+        public JsonResult Get(string contextKey, string token)
         {
-            EvaluationContext context;
-            bool contextExists = contexts.TryGetValue(contextKey, out context);
+            Tuple<FSharpList<Tuple<string,FSharpList<String>>>,FSharpList<Int32>,FSharpList<string>> oldContext;
+            bool contextExists = contexts.TryGetValue(contextKey, out oldContext);
             if (!contextExists) {
                 Response.StatusCode = 404;
                 return Json("Context not found");
             }
 
-            if (token.Equals("eval"))
-            {
-                try
-                {
-                    var evaluated = Interpreter.evaluate(context.Heap, context.Stack, String.Join(" ", context.Expression));
-                    context = new EvaluationContext(){
-                        Heap = evaluated.Item1,
-                        Stack = evaluated.Item2
-                    };
-                }
-                catch (Exception ex) {
-                    // Ignore all the exceptions!
-                    #pragma warning disable 0169
-                    var ignored = ex;
-                    #pragma warning restore 0169
-                }
-            } else {
-                context.Expression.Add(token);
-            }
-
-            var newContextKey = context.Hash();
-            if(!contexts.ContainsKey(newContextKey)){
-                contexts.Add(newContextKey, context);
-            }
-
-            var result = new EvaluationResult(){
-                Stack = context.Stack,
-                Expression = context.Expression,
-                Error = Interpreter.error,
-                _links = HeapTokenLinks(context.Heap, newContextKey, HttpContext.Request.Host.ToUriComponent())
-            };
-
-            var response = Json(result);
-            response.ContentType = "application/hal+json";
-
-            return response;
+            var result = EvaluateToken(token, oldContext);
+            return HalResponse(result);
         }
 
-        private Dictionary<string, HalLink> HeapTokenLinks(FSharpList<Tuple<string,FSharpList<String>>> heap, string contextKey, string host){
+        private EvaluationResult EvaluateToken(string token, Tuple<FSharpList<Tuple<string,FSharpList<String>>>,FSharpList<Int32>,FSharpList<string>> oldContext)
+        {
+            var context = Interpreter.evaluate(oldContext.Item1, oldContext.Item2, oldContext.Item3, token);
+            var key = StoreContext(context);
+
+            var result = new EvaluationResult()
+            {
+                Stack = context.Item2,
+                Expression = context.Item3,
+                Error = Interpreter.error,
+                _links = HeapTokenLinks(context.Item1, key, HttpContext.Request)
+            };
+            Interpreter.error = null;
+
+            return result;
+        }
+
+        private string StoreContext(Tuple<FSharpList<Tuple<string,FSharpList<String>>>,FSharpList<Int32>,FSharpList<string>> context)
+        {
+            var hash = MD5.Create().ComputeHash(Encoding.UTF8.GetBytes(context.ToString()));
+            var key = BitConverter.ToString(hash).Replace("-", "");
+
+            if(!contexts.ContainsKey(key))
+            {
+                contexts.Add(key, context);
+            }
+
+            return key;
+        }
+
+        private Dictionary<string, HalLink> HeapTokenLinks(FSharpList<Tuple<string,FSharpList<String>>> heap, string contextKey, HttpRequest request)
+        {
+            // Request.Url.Scheme
             Dictionary<string, HalLink> links;
-            if(heap.IsEmpty){
+            if(heap.IsEmpty)
+            {
                 links = new Dictionary<string, HalLink>();
-                links.Add("eval", new HalLink{href = String.Format("http://{0}/stck/contexts/{1}/tokens/{2}", host, contextKey, "eval")});
-            } else {
-                var link = new HalLink{href = String.Format("http://{0}/stck/contexts/{1}/tokens/{2}", host, contextKey, heap.Head.Item1)};
-                links = HeapTokenLinks(heap.Tail, contextKey, host);
-                links.Add(heap.Head.Item1, link);
+                links.Add("eval", TokenLink("eval", contextKey, request));
+            } else
+            {
+                links = HeapTokenLinks(heap.Tail, contextKey, request);
+                links.Add(heap.Head.Item1, TokenLink(heap.Head.Item1, contextKey, request));
             }
 
             return links;
+        }
+
+        private HalLink TokenLink(string token, string contextKey, HttpRequest request)
+        {
+            return new HalLink
+            {
+                href = String.Format("{0}://{1}/stck/contexts/{2}/tokens/{3}", request.Scheme, request.Host.ToUriComponent(), contextKey, token)
+            };
+        }
+
+        private JsonResult HalResponse(EvaluationResult result)
+        {
+            var response = Json(result);
+            response.ContentType = "application/hal+json";
+            return response;
         }
     }
 }

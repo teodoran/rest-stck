@@ -3,6 +3,7 @@ REST-STCK
 
 Arbitrary Computation as a Service (ACaaS)
 
+
 What is this?
 -------------
 
@@ -25,9 +26,9 @@ First, read the [STCK readme](https://github.com/teodoran/stck#using-the-languag
 
 All done? Then let's continue.
 
-You first visit [/stck](http://stck.azurewebsites.net/stck) to start a computation. This will respond with a JSON-object containing your new STCK-computation and a collection of links. The links contain all the possible tokens you can add to your STCK expression. You can for instance follow the link to [/stck/contexts/6DE86D212068CBB0FBB77C431A0F40FB/tokens/zero](http://stck.azurewebsites.net/stck/contexts/6DE86D212068CBB0FBB77C431A0F40FB/tokens/zero) to add `zero` to the current expression. Note how the `expression` part of the JSON-response now contains a zero. Add another `zero`to the expression by visiting [/stck/contexts/6DE86D212068CBB0FBB77C431A0F40FB/tokens/zero](http://stck.azurewebsites.net/stck/contexts/6DE86D212068CBB0FBB77C431A0F40FB/tokens/zero), and note that you now have two zeroes in your expression.
+You first visit [/stck](http://stck.azurewebsites.net/stck) to start a computation. This will respond with a JSON-object containing your new STCK-computation and a collection of links. The links contain all the possible tokens you can add to your STCK expression. You can for instance follow the link to [/stck/contexts/FFBECBFBA01644216AD5841A990338D3/tokens/zero](http://stck.azurewebsites.net/stck/contexts/FFBECBFBA01644216AD5841A990338D3/tokens/zero) to add `zero` to the current expression. Note how the `expression` part of the JSON-response now contains a zero. Add another `zero`to the expression by visiting [/stck/contexts/F40BB63810269123C1853105AD84F92B/tokens/zero](http://stck.azurewebsites.net/stck/contexts/F40BB63810269123C1853105AD84F92B/tokens/zero), and note that you now have two zeroes in your expression.
 
-Now we want to send the expression to the STCK-interpreter. This is done using [/stck/contexts/6DE86D212068CBB0FBB77C431A0F40FB/tokens/eval](http://stck.azurewebsites.net/stck/contexts/6DE86D212068CBB0FBB77C431A0F40FB/tokens/eval). Note that now the `expression` part of the response is empty, and that the `stack` part contains `[0, 0]`.
+Now we want to send the expression to the STCK-interpreter. This is done using [/stck/contexts/EEF0655ABDFE9DFD73207563DD704CBA/tokens/eval](http://stck.azurewebsites.net/stck/contexts/EEF0655ABDFE9DFD73207563DD704CBA/tokens/eval). Note that now the `expression` part of the response is empty, and that the `stack` part contains `[0, 0]`.
 
 To recap, you follow the links to add STCK-operators (tokens) to your expression, and then evaluate your expression by following the `eval`-link.
 
@@ -40,7 +41,28 @@ In order to construct different numbers you can use `zero`, along with the subro
 
 Since a lot of characters used in vanilla STCK needs to be URL-encoded, they are replaced with words in REST-STCK. For instance is `<a boolean> ? <this will happen if true> : <this will happen if false> ;` replaced with `<a boolean> if <this will happen if true> else <this will happen if false> end`, and `# <expression>` is replaced with `defn <expression>`.
 
-Determining which operators have been replaced whit what words are left as an exercise to the reader. 
+Operators are mapped according to the following rules:
+* add = +
+* sub = -
+* mult = *
+* gt = >
+* lt = <
+* idiv = i
+* if = ?
+* else = :
+* drop = .
+* end = ;
+* mod = %
+* defn = #
+* bwap = swap
+* meep = dup
+* jump = over
+* mop = rot
+* howlong = len
+* eq = =
+* opposite = not
+* 2meep = 2dup
+* div = /
 
 
 Let's say I want to play with this on my own computer
